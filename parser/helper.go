@@ -113,30 +113,6 @@ func (p *parserHelper) newObjectField(fieldID int64, field string, value ast.Exp
 	return p.exprFactory.NewStructField(fieldID, field, value, optional)
 }
 
-func (p *parserHelper) newComprehension(ctx any,
-	iterRange ast.Expr,
-	iterVar,
-	accuVar string,
-	accuInit ast.Expr,
-	condition ast.Expr,
-	step ast.Expr,
-	result ast.Expr) ast.Expr {
-	return p.exprFactory.NewComprehension(
-		p.newID(ctx), iterRange, iterVar, accuVar, accuInit, condition, step, result)
-}
-
-func (p *parserHelper) newComprehensionTwoVar(ctx any,
-	iterRange ast.Expr,
-	iterVar, iterVar2,
-	accuVar string,
-	accuInit ast.Expr,
-	condition ast.Expr,
-	step ast.Expr,
-	result ast.Expr) ast.Expr {
-	return p.exprFactory.NewComprehensionTwoVar(
-		p.newID(ctx), iterRange, iterVar, iterVar2, accuVar, accuInit, condition, step, result)
-}
-
 func (p *parserHelper) newID(ctx any) int64 {
 	if id, isID := ctx.(int64); isID {
 		return id
