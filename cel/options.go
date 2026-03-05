@@ -17,6 +17,7 @@ package cel
 import (
 	"errors"
 	"fmt"
+	"reflect"
 
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protodesc"
@@ -482,6 +483,41 @@ func OptimizeRegex(regexOptimizations ...*interpreter.RegexOptimization) Program
 	return func(p *prog) (*prog, error) {
 		p.regexOptimizations = append(p.regexOptimizations, regexOptimizations...)
 		return p, nil
+	}
+}
+
+// UseJIT enables best-effort native evaluation for the program.
+// If compilation or native execution is not available, evaluation transparently falls back to
+// the standard interpreter.
+func UseJIT() ProgramOption {
+	return func(p *prog) (*prog, error) {
+		p.useJIT = true
+		return p, nil
+	}
+}
+
+// UseJITActivationType registers *T as the input type for native JIT evaluation.
+// T must be a struct type; the option panics at program-creation time if it is not.
+// When JITEval is called with a *T value, the program fills slots directly from struct
+// fields by offset and evaluates using native machine code.
+// Has no effect unless UseJIT is also specified.
+func UseJITActivationType[T any]() ProgramOption {
+	return func(p *prog) (*prog, error) {
+		t := reflect.TypeOf((*T)(nil))
+		if t == nil || t.Kind() != reflect.Ptr || t.Elem().Kind() != reflect.Struct {
+			return nil, fmt.Errorf("useJITActivationType requires T to be a pointer-to-struct type, got %v", t)
+		}
+		if p.jitActivationType == nil {
+			p.jitActivationType = t
+			return p, nil
+		}
+		if p.jitActivationType == t {
+			return p, nil
+		}
+		return nil, fmt.Errorf(
+			"useJITActivationType supports a single type; already configured %v, got %v",
+			p.jitActivationType, t,
+		)
 	}
 }
 

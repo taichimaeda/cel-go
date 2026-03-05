@@ -1,0 +1,58 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+package(
+    licenses = ["notice"],  # Apache 2.0
+)
+
+go_library(
+    name = "go_default_library",
+    srcs = [
+        "builtin.go",
+        "common.go",
+        "compile.go",
+        "errors.go",
+        "compile_amd64.go",
+        "compile_arm64.go",
+        "evaluate.go",
+        "ir.go",
+        "regalloc.go",
+        "regalloc_amd64.go",
+        "regalloc_arm64.go",
+        "runtime.go",
+        "translate.go",
+    ],
+    importpath = "github.com/google/cel-go/jit",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//common/ast:go_default_library",
+        "//common/operators:go_default_library",
+        "//common/types:go_default_library",
+        "//common/types/ref:go_default_library",
+        "@com_github_bytedance_sonic_loader//:go_default_library",
+        "@com_github_twitchyliquid64_golang_asm//asm/arch:go_default_library",
+        "@com_github_twitchyliquid64_golang_asm//obj:go_default_library",
+    ] + select({
+        "@io_bazel_rules_go//go/platform:amd64": [
+            "@com_github_twitchyliquid64_golang_asm//obj/x86:go_default_library",
+            "@com_github_twitchyliquid64_golang_asm//objabi:go_default_library",
+        ],
+        "@io_bazel_rules_go//go/platform:arm64": [
+            "@com_github_twitchyliquid64_golang_asm//obj/arm64:go_default_library",
+            "@com_github_twitchyliquid64_golang_asm//objabi:go_default_library",
+        ],
+        "//conditions:default": [],
+    }),
+)
+
+go_test(
+    name = "go_default_test",
+    srcs = [
+        "regalloc_test.go",
+        "translate_test.go",
+    ],
+    deps = [
+        ":go_default_library",
+        "//cel:go_default_library",
+        "//common/ast:go_default_library",
+    ],
+)

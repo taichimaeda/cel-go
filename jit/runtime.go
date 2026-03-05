@@ -1,0 +1,40 @@
+// Copyright 2026 Taichi Maeda
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package jit
+
+import (
+	"unsafe"
+)
+
+type eface struct {
+	typ  unsafe.Pointer
+	data unsafe.Pointer
+}
+
+func extractString(s string) (ptr uint64, ln uint64) {
+	if len(s) == 0 {
+		return 0, 0
+	}
+	p := uintptr(unsafe.Pointer(unsafe.StringData(s)))
+	return uint64(p), uint64(len(s))
+}
+
+func extractDataPointer(v any) unsafe.Pointer {
+	return (*eface)(unsafe.Pointer(&v)).data
+}
+
+func extractDataUintptr(fn any) uintptr {
+	return uintptr((*eface)(unsafe.Pointer(&fn)).data)
+}

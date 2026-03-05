@@ -41,6 +41,7 @@ go_library(
         "//common/types/ref:go_default_library",
         "//common/types/traits:go_default_library",
         "//interpreter:go_default_library",
+        "//jit:go_default_library",
         "//parser:go_default_library",
         "@dev_cel_expr//:expr",
         "@org_golang_google_genproto_googleapis_api//expr/v1alpha1:go_default_library",

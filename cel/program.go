@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"reflect"
 	"sync"
 
 	"github.com/google/cel-go/common/ast"
@@ -25,6 +26,7 @@ import (
 	"github.com/google/cel-go/common/types"
 	"github.com/google/cel-go/common/types/ref"
 	"github.com/google/cel-go/interpreter"
+	"github.com/google/cel-go/jit"
 )
 
 // Program is an evaluable view of an Ast.
@@ -53,6 +55,21 @@ type Program interface {
 	//
 	// The output contract for `ContextEval` is otherwise identical to the `Eval` method.
 	ContextEval(context.Context, any) (ref.Val, *EvalDetails, error)
+
+	// JITEnabled reports whether this program can execute through the native JIT path.
+	JITEnabled() bool
+
+	// JITError reports why JIT is unavailable when UseJIT was requested.
+	//
+	// Returns nil if JIT was not requested or JIT compiled successfully.
+	JITError() error
+
+	// JITEval evaluates the program using native JIT-compiled code.
+	//
+	// Returns (result, true) if JIT is enabled and the input type matches the registered
+	// activation type. Returns (false, false) if JIT is not enabled or the input type does
+	// not match, allowing the caller to fall back to Eval with a proper Activation.
+	JITEval(any) (bool, bool)
 }
 
 // Activation used to resolve identifiers by name and references by id.
@@ -165,6 +182,12 @@ type prog struct {
 	callCostEstimator interpreter.ActualCostEstimator
 	costOptions       []interpreter.CostTrackerOption
 	costLimit         *uint64
+
+	// JIT configuration and compiled entrypoints.
+	useJIT            bool
+	jitActivationType reflect.Type
+	jitEvalFunc       jit.NativeEvalFunc
+	jitErr            error
 }
 
 // newProgram creates a program instance with an environment, an ast, and an optional list of
@@ -275,7 +298,22 @@ func newProgram(e *Env, a *ast.AST, opts []ProgramOption) (Program, error) {
 			plannerOptions = append(plannerOptions, observers...)
 		}
 	}
-	return p.initInterpretable(a, plannerOptions)
+	p, err = p.initInterpretable(a, plannerOptions)
+	if err != nil {
+		return nil, err
+	}
+	if p.useJIT && p.jitActivationType != nil {
+		jitP, jitErr := jit.Compile(a, p.jitActivationType)
+		// JIT is best-effort.
+		// Any compile error falls back to interpreter-only execution.
+		p.jitErr = jitErr
+		if jitErr == nil && jitP != nil {
+			p.jitActivationType = jitP.ActivationType
+			p.jitEvalFunc = jitP.EvalFunc
+			p.jitErr = nil
+		}
+	}
+	return p, nil
 }
 
 func (p *prog) initInterpretable(a *ast.AST, plannerOptions []interpreter.PlannerOption) (*prog, error) {
@@ -367,6 +405,28 @@ func (p *prog) ContextEval(ctx context.Context, input any) (ref.Val, *EvalDetail
 		return out, det, context.Cause(ctx)
 	}
 	return out, det, err
+}
+
+// JITEnabled reports whether this program can execute through the native JIT path.
+func (p *prog) JITEnabled() bool {
+	return p.useJIT &&
+		p.jitEvalFunc != nil &&
+		p.jitActivationType != nil &&
+		p.observable == nil &&
+		p.defaultVars == nil
+}
+
+// JITError reports the best-effort native compilation error, if any.
+func (p *prog) JITError() error {
+	return p.jitErr
+}
+
+// JITEval implements the Program interface method.
+func (p *prog) JITEval(input any) (bool, bool) {
+	if !p.JITEnabled() {
+		return false, false
+	}
+	return jit.TryEvaluate(p.jitEvalFunc, p.jitActivationType, input)
 }
 
 type ctxEvalActivation struct {
