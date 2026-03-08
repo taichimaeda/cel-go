@@ -28,7 +28,7 @@ go_library(
         "//common/operators:go_default_library",
         "//common/types:go_default_library",
         "//common/types/ref:go_default_library",
-        "@com_github_bytedance_sonic_loader//:go_default_library",
+        "@com_github_taichimaeda_sonic_loader//:go_default_library",
         "@com_github_twitchyliquid64_golang_asm//asm/arch:go_default_library",
         "@com_github_twitchyliquid64_golang_asm//obj:go_default_library",
     ] + select({
