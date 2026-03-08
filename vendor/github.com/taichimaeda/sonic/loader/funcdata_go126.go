@@ -1,5 +1,5 @@
-//go:build go1.20 && !go1.21
-// +build go1.20,!go1.21
+//go:build go1.26 && !go1.27
+// +build go1.26,!go1.27
 
 /*
  * Copyright 2021 ByteDance Inc.
@@ -20,7 +20,8 @@
 package loader
 
 import (
-    `github.com/bytedance/sonic/loader/internal/rt`
+    `unsafe`
+    `github.com/taichimaeda/sonic/loader/internal/rt`
 )
 
 const (
@@ -48,6 +49,7 @@ type moduledata struct {
     types, etypes         uintptr
     rodata                uintptr
     gofunc                uintptr // go.func.* is actual funcinfo object in image
+    epclntab              uintptr
 
     textsectmap []textSection // see runtime/symtab.go: textAddr()
     typelinks   []int32 // offsets from types
@@ -58,16 +60,19 @@ type moduledata struct {
     pluginpath string
     pkghashes  []modulehash
 
+    // This slice records the initializing tasks that need to be
+	// done to start up the program. It is built by the linker.
+	inittasks []unsafe.Pointer
+
     modulename   string
     modulehashes []modulehash
 
     hasmain uint8 // 1 if module contains the main function, 0 otherwise
+    bad bool // module failed to load and should be ignored
 
     gcdatamask, gcbssmask bitVector
 
     typemap map[int32]*rt.GoType // offset to *_rtype in previous module
-
-    bad bool // module failed to load and should be ignored
 
     next *moduledata
 }
@@ -111,4 +116,8 @@ type _func struct {
     // An offset of ^uint32(0) indicates that there is no entry.
     //
     // funcdata [nfuncdata]uint32
+}
+
+func setEpclntab(mod *moduledata, val uintptr) {
+    mod.epclntab = val
 }

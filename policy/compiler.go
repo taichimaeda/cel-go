@@ -19,13 +19,13 @@ package policy
 import (
 	"fmt"
 
-	"github.com/google/cel-go/cel"
-	"github.com/google/cel-go/common"
-	"github.com/google/cel-go/common/ast"
-	"github.com/google/cel-go/common/containers"
-	"github.com/google/cel-go/common/decls"
-	"github.com/google/cel-go/common/types"
-	"github.com/google/cel-go/common/types/ref"
+	"github.com/taichimaeda/cel-go/cel"
+	"github.com/taichimaeda/cel-go/common"
+	"github.com/taichimaeda/cel-go/common/ast"
+	"github.com/taichimaeda/cel-go/common/containers"
+	"github.com/taichimaeda/cel-go/common/decls"
+	"github.com/taichimaeda/cel-go/common/types"
+	"github.com/taichimaeda/cel-go/common/types/ref"
 )
 
 // CompiledRule represents the variables and match blocks associated with a rule block.

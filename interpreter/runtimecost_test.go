@@ -23,16 +23,16 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/cel-go/checker"
-	"github.com/google/cel-go/common"
-	"github.com/google/cel-go/common/containers"
-	"github.com/google/cel-go/common/decls"
-	"github.com/google/cel-go/common/overloads"
-	"github.com/google/cel-go/common/types"
-	"github.com/google/cel-go/common/types/ref"
-	"github.com/google/cel-go/parser"
+	"github.com/taichimaeda/cel-go/checker"
+	"github.com/taichimaeda/cel-go/common"
+	"github.com/taichimaeda/cel-go/common/containers"
+	"github.com/taichimaeda/cel-go/common/decls"
+	"github.com/taichimaeda/cel-go/common/overloads"
+	"github.com/taichimaeda/cel-go/common/types"
+	"github.com/taichimaeda/cel-go/common/types/ref"
+	"github.com/taichimaeda/cel-go/parser"
 
-	proto3pb "github.com/google/cel-go/test/proto3pb"
+	proto3pb "github.com/taichimaeda/cel-go/test/proto3pb"
 )
 
 func TestTrackCostAdvanced(t *testing.T) {

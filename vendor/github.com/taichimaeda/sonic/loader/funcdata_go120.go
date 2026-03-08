@@ -1,6 +1,5 @@
-// go:build go1.18 && !go1.20
-//go:build go1.18 && !go1.20
-// +build go1.18,!go1.20
+//go:build go1.20 && !go1.21
+// +build go1.20,!go1.21
 
 /*
  * Copyright 2021 ByteDance Inc.
@@ -21,11 +20,11 @@
 package loader
 
 import (
-    `github.com/bytedance/sonic/loader/internal/rt`
+    `github.com/taichimaeda/sonic/loader/internal/rt`
 )
 
 const (
-    _Magic uint32 = 0xfffffff0
+    _Magic uint32 = 0xFFFFFFF1
 )
 
 type moduledata struct {
@@ -44,6 +43,7 @@ type moduledata struct {
     data, edata           uintptr
     bss, ebss             uintptr
     noptrbss, enoptrbss   uintptr
+    covctrs, ecovctrs     uintptr
     end, gcdata, gcbss    uintptr
     types, etypes         uintptr
     rodata                uintptr
@@ -84,7 +84,8 @@ type _func struct {
     pcln      uint32
     npcdata   uint32
     cuOffset  uint32 // runtime.cutab offset of this function's CU
-    funcID    uint8  // set for certain special runtime functions
+    startLine int32  // line number of start of function (func keyword/TEXT directive)
+    funcID    uint8 // set for certain special runtime functions
     flag      uint8
     _         [1]byte // pad
     nfuncdata uint8   // 

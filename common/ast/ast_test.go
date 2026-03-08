@@ -20,10 +20,10 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/google/cel-go/common"
-	"github.com/google/cel-go/common/ast"
-	"github.com/google/cel-go/common/overloads"
-	"github.com/google/cel-go/common/types"
+	"github.com/taichimaeda/cel-go/common"
+	"github.com/taichimaeda/cel-go/common/ast"
+	"github.com/taichimaeda/cel-go/common/overloads"
+	"github.com/taichimaeda/cel-go/common/types"
 	"google.golang.org/protobuf/encoding/prototext"
 	"google.golang.org/protobuf/proto"
 )

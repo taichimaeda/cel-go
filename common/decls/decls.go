@@ -19,12 +19,12 @@ import (
 	"fmt"
 	"strings"
 
-	chkdecls "github.com/google/cel-go/checker/decls"
-	"github.com/google/cel-go/common"
-	"github.com/google/cel-go/common/functions"
-	"github.com/google/cel-go/common/operators"
-	"github.com/google/cel-go/common/types"
-	"github.com/google/cel-go/common/types/ref"
+	chkdecls "github.com/taichimaeda/cel-go/checker/decls"
+	"github.com/taichimaeda/cel-go/common"
+	"github.com/taichimaeda/cel-go/common/functions"
+	"github.com/taichimaeda/cel-go/common/operators"
+	"github.com/taichimaeda/cel-go/common/types"
+	"github.com/taichimaeda/cel-go/common/types/ref"
 
 	exprpb "google.golang.org/genproto/googleapis/api/expr/v1alpha1"
 )

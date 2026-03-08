@@ -24,7 +24,7 @@ go_library(
     srcs = [
         "env.go",
     ],
-    importpath = "github.com/google/cel-go/common/env",
+    importpath = "github.com/taichimaeda/cel-go/common/env",
     deps = [
         "//common:go_default_library",
         "//common/decls:go_default_library",

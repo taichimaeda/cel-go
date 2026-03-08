@@ -18,13 +18,13 @@ import (
 	"fmt"
 	"math"
 
-	"github.com/google/cel-go/cel"
-	"github.com/google/cel-go/common/ast"
-	"github.com/google/cel-go/common/operators"
-	"github.com/google/cel-go/common/types"
-	"github.com/google/cel-go/common/types/ref"
-	"github.com/google/cel-go/common/types/traits"
-	"github.com/google/cel-go/parser"
+	"github.com/taichimaeda/cel-go/cel"
+	"github.com/taichimaeda/cel-go/common/ast"
+	"github.com/taichimaeda/cel-go/common/operators"
+	"github.com/taichimaeda/cel-go/common/types"
+	"github.com/taichimaeda/cel-go/common/types/ref"
+	"github.com/taichimaeda/cel-go/common/types/traits"
+	"github.com/taichimaeda/cel-go/parser"
 )
 
 const (

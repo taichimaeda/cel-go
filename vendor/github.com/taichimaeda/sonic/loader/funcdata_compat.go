@@ -1,5 +1,5 @@
-//go:build go1.17 && !go1.18
-// +build go1.17,!go1.18
+//go:build !go1.17 || go1.27
+// +build !go1.17 go1.27
 
 /*
  * Copyright 2021 ByteDance Inc.
@@ -24,7 +24,7 @@ import (
    `unsafe`
    `sort`
 
-   `github.com/bytedance/sonic/loader/internal/rt`
+   `github.com/taichimaeda/sonic/loader/internal/rt`
 )
 
 const (
@@ -192,7 +192,6 @@ func makeFtab(funcs []_func, maxpc uintptr) (ftab []funcTab, pclntabSize int64, 
 
     // Final entry of table is just end pc offset.
     ftab = append(ftab, funcTab{maxpc, 0})
-
     return
 }
 

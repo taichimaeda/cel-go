@@ -19,7 +19,7 @@ import (
 	"reflect"
 	"unicode"
 
-	celtypes "github.com/google/cel-go/common/types"
+	celtypes "github.com/taichimaeda/cel-go/common/types"
 )
 
 func boolToInt(v bool) int {

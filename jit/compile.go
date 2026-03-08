@@ -22,9 +22,9 @@ import (
 	"sync/atomic"
 	"unsafe"
 
-	"github.com/bytedance/sonic/loader"
-	celast "github.com/google/cel-go/common/ast"
-	celtypes "github.com/google/cel-go/common/types"
+	"github.com/taichimaeda/sonic/loader"
+	celast "github.com/taichimaeda/cel-go/common/ast"
+	celtypes "github.com/taichimaeda/cel-go/common/types"
 	"github.com/twitchyliquid64/golang-asm/asm/arch"
 	"github.com/twitchyliquid64/golang-asm/obj"
 )

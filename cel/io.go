@@ -21,12 +21,12 @@ import (
 
 	"google.golang.org/protobuf/proto"
 
-	"github.com/google/cel-go/common"
-	"github.com/google/cel-go/common/ast"
-	"github.com/google/cel-go/common/types"
-	"github.com/google/cel-go/common/types/ref"
-	"github.com/google/cel-go/common/types/traits"
-	"github.com/google/cel-go/parser"
+	"github.com/taichimaeda/cel-go/common"
+	"github.com/taichimaeda/cel-go/common/ast"
+	"github.com/taichimaeda/cel-go/common/types"
+	"github.com/taichimaeda/cel-go/common/types/ref"
+	"github.com/taichimaeda/cel-go/common/types/traits"
+	"github.com/taichimaeda/cel-go/parser"
 
 	celpb "cel.dev/expr"
 	exprpb "google.golang.org/genproto/googleapis/api/expr/v1alpha1"

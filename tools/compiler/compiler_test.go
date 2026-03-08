@@ -18,10 +18,10 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/google/cel-go/cel"
-	"github.com/google/cel-go/common/env"
-	"github.com/google/cel-go/ext"
-	"github.com/google/cel-go/policy"
+	"github.com/taichimaeda/cel-go/cel"
+	"github.com/taichimaeda/cel-go/common/env"
+	"github.com/taichimaeda/cel-go/ext"
+	"github.com/taichimaeda/cel-go/policy"
 
 	celpb "cel.dev/expr"
 	configpb "cel.dev/expr/conformance"

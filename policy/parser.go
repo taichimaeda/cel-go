@@ -20,9 +20,9 @@ import (
 
 	"go.yaml.in/yaml/v3"
 
-	"github.com/google/cel-go/cel"
-	"github.com/google/cel-go/common"
-	"github.com/google/cel-go/common/ast"
+	"github.com/taichimaeda/cel-go/cel"
+	"github.com/taichimaeda/cel-go/common"
+	"github.com/taichimaeda/cel-go/common/ast"
 )
 
 type semanticType int

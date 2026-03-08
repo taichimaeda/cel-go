@@ -20,8 +20,8 @@ import (
 
 	antlr "github.com/antlr4-go/antlr/v4"
 
-	"github.com/google/cel-go/checker"
-	"github.com/google/cel-go/repl/parser"
+	"github.com/taichimaeda/cel-go/checker"
+	"github.com/taichimaeda/cel-go/repl/parser"
 
 	exprpb "google.golang.org/genproto/googleapis/api/expr/v1alpha1"
 )

@@ -1,5 +1,5 @@
-//go:build go1.26 && !go1.27
-// +build go1.26,!go1.27
+//go:build go1.23 && !go1.26
+// +build go1.23,!go1.26
 
 /*
  * Copyright 2021 ByteDance Inc.
@@ -21,7 +21,7 @@ package loader
 
 import (
     `unsafe`
-    `github.com/bytedance/sonic/loader/internal/rt`
+    `github.com/taichimaeda/sonic/loader/internal/rt`
 )
 
 const (
@@ -49,7 +49,6 @@ type moduledata struct {
     types, etypes         uintptr
     rodata                uintptr
     gofunc                uintptr // go.func.* is actual funcinfo object in image
-    epclntab              uintptr
 
     textsectmap []textSection // see runtime/symtab.go: textAddr()
     typelinks   []int32 // offsets from types
@@ -116,8 +115,4 @@ type _func struct {
     // An offset of ^uint32(0) indicates that there is no entry.
     //
     // funcdata [nfuncdata]uint32
-}
-
-func setEpclntab(mod *moduledata, val uintptr) {
-    mod.epclntab = val
 }

@@ -29,7 +29,7 @@ import (
 	"fmt"
 	"reflect"
 
-	x64 "github.com/bytedance/sonic/loader/internal/iasm/x86_64"
+	x64 "github.com/taichimaeda/sonic/loader/internal/iasm/x86_64"
 )
 
 /** Frame Structure of the Generated Function

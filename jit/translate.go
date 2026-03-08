@@ -22,10 +22,10 @@ import (
 	"sort"
 	"strings"
 
-	celast "github.com/google/cel-go/common/ast"
-	"github.com/google/cel-go/common/operators"
-	celtypes "github.com/google/cel-go/common/types"
-	"github.com/google/cel-go/common/types/ref"
+	celast "github.com/taichimaeda/cel-go/common/ast"
+	"github.com/taichimaeda/cel-go/common/operators"
+	celtypes "github.com/taichimaeda/cel-go/common/types"
+	"github.com/taichimaeda/cel-go/common/types/ref"
 )
 
 // Translate turns a checked AST into an IR program that loads variables

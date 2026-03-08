@@ -19,9 +19,9 @@ import (
 	"reflect"
 	"regexp"
 
-	"github.com/google/cel-go/common/ast"
-	"github.com/google/cel-go/common/env"
-	"github.com/google/cel-go/common/overloads"
+	"github.com/taichimaeda/cel-go/common/ast"
+	"github.com/taichimaeda/cel-go/common/env"
+	"github.com/taichimaeda/cel-go/common/overloads"
 )
 
 const (

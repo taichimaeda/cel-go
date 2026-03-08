@@ -18,11 +18,11 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/google/cel-go/common/containers"
-	"github.com/google/cel-go/common/decls"
-	"github.com/google/cel-go/common/overloads"
-	"github.com/google/cel-go/common/types"
-	"github.com/google/cel-go/parser"
+	"github.com/taichimaeda/cel-go/common/containers"
+	"github.com/taichimaeda/cel-go/common/decls"
+	"github.com/taichimaeda/cel-go/common/overloads"
+	"github.com/taichimaeda/cel-go/common/types"
+	"github.com/taichimaeda/cel-go/parser"
 )
 
 type aggregateLiteralElementType int

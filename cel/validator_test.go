@@ -18,12 +18,12 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/google/cel-go/common/operators"
-	"github.com/google/cel-go/common/overloads"
-	"github.com/google/cel-go/common/types"
-	"github.com/google/cel-go/common/types/ref"
-	"github.com/google/cel-go/common/types/traits"
-	"github.com/google/cel-go/test"
+	"github.com/taichimaeda/cel-go/common/operators"
+	"github.com/taichimaeda/cel-go/common/overloads"
+	"github.com/taichimaeda/cel-go/common/types"
+	"github.com/taichimaeda/cel-go/common/types/ref"
+	"github.com/taichimaeda/cel-go/common/types/traits"
+	"github.com/taichimaeda/cel-go/test"
 )
 
 func TestValidateDurationLiterals(t *testing.T) {

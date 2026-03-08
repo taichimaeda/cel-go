@@ -18,9 +18,9 @@ import (
 	"encoding/base64"
 	"math"
 
-	"github.com/google/cel-go/cel"
-	"github.com/google/cel-go/common/types"
-	"github.com/google/cel-go/common/types/ref"
+	"github.com/taichimaeda/cel-go/cel"
+	"github.com/taichimaeda/cel-go/common/types"
+	"github.com/taichimaeda/cel-go/common/types/ref"
 )
 
 // Encoders returns a cel.EnvOption to configure extended functions for string, byte, and object

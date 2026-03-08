@@ -1,5 +1,6 @@
-//go:build go1.23 && !go1.26
-// +build go1.23,!go1.26
+// go:build go1.18 && !go1.20
+//go:build go1.18 && !go1.20
+// +build go1.18,!go1.20
 
 /*
  * Copyright 2021 ByteDance Inc.
@@ -20,12 +21,11 @@
 package loader
 
 import (
-    `unsafe`
-    `github.com/bytedance/sonic/loader/internal/rt`
+    `github.com/taichimaeda/sonic/loader/internal/rt`
 )
 
 const (
-    _Magic uint32 = 0xFFFFFFF1
+    _Magic uint32 = 0xfffffff0
 )
 
 type moduledata struct {
@@ -44,7 +44,6 @@ type moduledata struct {
     data, edata           uintptr
     bss, ebss             uintptr
     noptrbss, enoptrbss   uintptr
-    covctrs, ecovctrs     uintptr
     end, gcdata, gcbss    uintptr
     types, etypes         uintptr
     rodata                uintptr
@@ -59,19 +58,16 @@ type moduledata struct {
     pluginpath string
     pkghashes  []modulehash
 
-    // This slice records the initializing tasks that need to be
-	// done to start up the program. It is built by the linker.
-	inittasks []unsafe.Pointer
-
     modulename   string
     modulehashes []modulehash
 
     hasmain uint8 // 1 if module contains the main function, 0 otherwise
-    bad bool // module failed to load and should be ignored
 
     gcdatamask, gcbssmask bitVector
 
     typemap map[int32]*rt.GoType // offset to *_rtype in previous module
+
+    bad bool // module failed to load and should be ignored
 
     next *moduledata
 }
@@ -88,8 +84,7 @@ type _func struct {
     pcln      uint32
     npcdata   uint32
     cuOffset  uint32 // runtime.cutab offset of this function's CU
-    startLine int32  // line number of start of function (func keyword/TEXT directive)
-    funcID    uint8 // set for certain special runtime functions
+    funcID    uint8  // set for certain special runtime functions
     flag      uint8
     _         [1]byte // pad
     nfuncdata uint8   // 

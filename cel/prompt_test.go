@@ -18,8 +18,8 @@ import (
 	_ "embed"
 	"testing"
 
-	"github.com/google/cel-go/common/env"
-	"github.com/google/cel-go/test"
+	"github.com/taichimaeda/cel-go/common/env"
+	"github.com/taichimaeda/cel-go/test"
 )
 
 //go:embed testdata/basic.prompt.txt

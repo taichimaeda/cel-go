@@ -31,17 +31,17 @@ import (
 	"google.golang.org/protobuf/reflect/protodesc"
 	"google.golang.org/protobuf/reflect/protoreflect"
 
-	"github.com/google/cel-go/checker"
-	celast "github.com/google/cel-go/common/ast"
-	"github.com/google/cel-go/common/env"
-	"github.com/google/cel-go/common/operators"
-	"github.com/google/cel-go/common/overloads"
-	"github.com/google/cel-go/common/types"
-	"github.com/google/cel-go/common/types/ref"
-	"github.com/google/cel-go/common/types/traits"
-	"github.com/google/cel-go/interpreter"
-	"github.com/google/cel-go/parser"
-	"github.com/google/cel-go/test"
+	"github.com/taichimaeda/cel-go/checker"
+	celast "github.com/taichimaeda/cel-go/common/ast"
+	"github.com/taichimaeda/cel-go/common/env"
+	"github.com/taichimaeda/cel-go/common/operators"
+	"github.com/taichimaeda/cel-go/common/overloads"
+	"github.com/taichimaeda/cel-go/common/types"
+	"github.com/taichimaeda/cel-go/common/types/ref"
+	"github.com/taichimaeda/cel-go/common/types/traits"
+	"github.com/taichimaeda/cel-go/interpreter"
+	"github.com/taichimaeda/cel-go/parser"
+	"github.com/taichimaeda/cel-go/test"
 
 	exprpb "google.golang.org/genproto/googleapis/api/expr/v1alpha1"
 	descpb "google.golang.org/protobuf/types/descriptorpb"
@@ -50,8 +50,8 @@ import (
 	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 	wrapperspb "google.golang.org/protobuf/types/known/wrapperspb"
 
-	proto2pb "github.com/google/cel-go/test/proto2pb"
-	proto3pb "github.com/google/cel-go/test/proto3pb"
+	proto2pb "github.com/taichimaeda/cel-go/test/proto2pb"
+	proto3pb "github.com/taichimaeda/cel-go/test/proto3pb"
 )
 
 func Test_ExampleWithBuiltins(t *testing.T) {

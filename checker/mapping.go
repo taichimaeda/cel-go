@@ -15,7 +15,7 @@
 package checker
 
 import (
-	"github.com/google/cel-go/common/types"
+	"github.com/taichimaeda/cel-go/common/types"
 )
 
 type mapping struct {

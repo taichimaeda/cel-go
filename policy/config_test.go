@@ -17,12 +17,12 @@ package policy
 import (
 	"testing"
 
-	"github.com/google/cel-go/cel"
-	"github.com/google/cel-go/common/env"
+	"github.com/taichimaeda/cel-go/cel"
+	"github.com/taichimaeda/cel-go/common/env"
 
 	"go.yaml.in/yaml/v3"
 
-	proto3pb "github.com/google/cel-go/test/proto3pb"
+	proto3pb "github.com/taichimaeda/cel-go/test/proto3pb"
 )
 
 func TestConfig(t *testing.T) {

@@ -20,18 +20,18 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/cel-go/common"
-	"github.com/google/cel-go/common/ast"
-	"github.com/google/cel-go/common/containers"
-	"github.com/google/cel-go/common/debug"
-	"github.com/google/cel-go/common/decls"
-	"github.com/google/cel-go/common/stdlib"
-	"github.com/google/cel-go/common/types"
-	"github.com/google/cel-go/parser"
-	"github.com/google/cel-go/test"
+	"github.com/taichimaeda/cel-go/common"
+	"github.com/taichimaeda/cel-go/common/ast"
+	"github.com/taichimaeda/cel-go/common/containers"
+	"github.com/taichimaeda/cel-go/common/debug"
+	"github.com/taichimaeda/cel-go/common/decls"
+	"github.com/taichimaeda/cel-go/common/stdlib"
+	"github.com/taichimaeda/cel-go/common/types"
+	"github.com/taichimaeda/cel-go/parser"
+	"github.com/taichimaeda/cel-go/test"
 
-	proto2pb "github.com/google/cel-go/test/proto2pb"
-	proto3pb "github.com/google/cel-go/test/proto3pb"
+	proto2pb "github.com/taichimaeda/cel-go/test/proto2pb"
+	proto3pb "github.com/taichimaeda/cel-go/test/proto3pb"
 )
 
 func testCases(t testing.TB) []testInfo {

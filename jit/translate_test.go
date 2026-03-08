@@ -21,9 +21,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/google/cel-go/cel"
-	celast "github.com/google/cel-go/common/ast"
-	"github.com/google/cel-go/jit"
+	"github.com/taichimaeda/cel-go/cel"
+	celast "github.com/taichimaeda/cel-go/common/ast"
+	"github.com/taichimaeda/cel-go/jit"
 )
 
 func TestTranslateStructFieldLoadsAndOps(t *testing.T) {

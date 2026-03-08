@@ -19,15 +19,15 @@ import (
 	"os"
 	"testing"
 
-	"github.com/google/cel-go/cel"
-	"github.com/google/cel-go/common/env"
-	"github.com/google/cel-go/common/types"
-	"github.com/google/cel-go/common/types/ref"
-	"github.com/google/cel-go/test"
+	"github.com/taichimaeda/cel-go/cel"
+	"github.com/taichimaeda/cel-go/common/env"
+	"github.com/taichimaeda/cel-go/common/types"
+	"github.com/taichimaeda/cel-go/common/types/ref"
+	"github.com/taichimaeda/cel-go/test"
 
 	"go.yaml.in/yaml/v3"
 
-	proto3pb "github.com/google/cel-go/test/proto3pb"
+	proto3pb "github.com/taichimaeda/cel-go/test/proto3pb"
 )
 
 var (

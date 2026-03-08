@@ -21,12 +21,12 @@ import (
 	"reflect"
 	"sync"
 
-	"github.com/google/cel-go/common/ast"
-	"github.com/google/cel-go/common/functions"
-	"github.com/google/cel-go/common/types"
-	"github.com/google/cel-go/common/types/ref"
-	"github.com/google/cel-go/interpreter"
-	"github.com/google/cel-go/jit"
+	"github.com/taichimaeda/cel-go/common/ast"
+	"github.com/taichimaeda/cel-go/common/functions"
+	"github.com/taichimaeda/cel-go/common/types"
+	"github.com/taichimaeda/cel-go/common/types/ref"
+	"github.com/taichimaeda/cel-go/interpreter"
+	"github.com/taichimaeda/cel-go/jit"
 )
 
 // Program is an evaluable view of an Ast.

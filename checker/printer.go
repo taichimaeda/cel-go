@@ -17,8 +17,8 @@ package checker
 import (
 	"sort"
 
-	"github.com/google/cel-go/common/ast"
-	"github.com/google/cel-go/common/debug"
+	"github.com/taichimaeda/cel-go/common/ast"
+	"github.com/taichimaeda/cel-go/common/debug"
 )
 
 type semanticAdorner struct {

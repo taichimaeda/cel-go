@@ -19,7 +19,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/google/cel-go/common/ast"
+	"github.com/taichimaeda/cel-go/common/ast"
 )
 
 func TestContainers_ResolveCandidateNames(t *testing.T) {

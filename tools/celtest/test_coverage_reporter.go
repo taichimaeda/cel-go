@@ -20,9 +20,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/google/cel-go/common/ast"
-	"github.com/google/cel-go/common/types"
-	"github.com/google/cel-go/parser"
+	"github.com/taichimaeda/cel-go/common/ast"
+	"github.com/taichimaeda/cel-go/common/types"
+	"github.com/taichimaeda/cel-go/parser"
 )
 
 // reportCoverage reports the coverage information for the provided programs.

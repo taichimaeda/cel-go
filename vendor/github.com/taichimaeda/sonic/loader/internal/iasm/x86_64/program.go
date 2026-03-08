@@ -21,7 +21,7 @@ import (
 	"math"
 	"math/bits"
 
-	"github.com/bytedance/sonic/loader/internal/iasm/expr"
+	"github.com/taichimaeda/sonic/loader/internal/iasm/expr"
 )
 
 type (

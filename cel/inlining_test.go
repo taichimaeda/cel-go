@@ -17,9 +17,9 @@ package cel_test
 import (
 	"testing"
 
-	"github.com/google/cel-go/cel"
+	"github.com/taichimaeda/cel-go/cel"
 
-	proto3pb "github.com/google/cel-go/test/proto3pb"
+	proto3pb "github.com/taichimaeda/cel-go/test/proto3pb"
 )
 
 func TestInliningOptimizer(t *testing.T) {

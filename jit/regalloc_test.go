@@ -18,7 +18,7 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/google/cel-go/jit"
+	"github.com/taichimaeda/cel-go/jit"
 )
 
 func TestAllocateDoubleWideRegister(t *testing.T) {

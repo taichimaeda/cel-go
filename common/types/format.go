@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/google/cel-go/common/types/ref"
-	"github.com/google/cel-go/common/types/traits"
+	"github.com/taichimaeda/cel-go/common/types/ref"
+	"github.com/taichimaeda/cel-go/common/types/traits"
 )
 
 type formattable interface {
