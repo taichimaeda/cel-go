@@ -28,14 +28,16 @@ import (
 
 // Frame layout after prologue:
 //
-//   high address
-//   +------------------------------------------+
-//   | saved struct ptr [SP+amd64StructBaseOff] |
-//   +------------------------------------------+
-//   | helper call area / spill region          |
-//   | [SP ... SP+amd64StructBaseOff)           |
-//   +------------------------------------------+  <- SP
-//   low address
+//	high address
+//	+------------------------------------------------------+
+//	| caller-save area [SP+amd64BaseFrameBytes ...)        |
+//	+------------------------------------------------------+
+//	| struct base ptr  [SP+amd64StructBaseOff]             |
+//	+------------------------------------------------------+
+//	| helper call area                                     |
+//	|                  [SP ... SP+amd64CallAreaBytes)       |
+//	+------------------------------------------------------+  <- SP
+//	low address
 
 const (
 	regArg    = 0
@@ -44,12 +46,13 @@ const (
 )
 
 const (
+	// Go internal ABI may spill register arguments into the caller's frame;
+	// reserve enough space for outgoing helper calls (8 slots × 8 bytes).
+	amd64CallAreaBytes = 64
 	// Saved struct pointer, used to reload struct-field base across helper calls.
-	amd64StructBaseOff = 64
-	// Keep stack 8-byte aligned.
-	amd64FrameBytes = 72
-
-	nativeFrameBytes = amd64FrameBytes
+	amd64StructBaseOff = amd64CallAreaBytes
+	// Base frame size without caller-save area.
+	amd64BaseFrameBytes = amd64StructBaseOff + 8
 )
 
 func newNativeAsmContext() (*obj.Link, *arch.Arch) {
@@ -69,14 +72,14 @@ func newNativeAsmContext() (*obj.Link, *arch.Arch) {
 // emitPrologue emits frame setup and struct pointer save:
 // SUBQ SP, #frame; MOVQ struct, [SP+amd64StructBaseOff].
 func (as *assembler) emitPrologue() {
-	as.emitSubImmSP(amd64FrameBytes)
+	as.emitSubImmSP(int32(as.frameBytes))
 	as.emitStoreMemInt(regArg, asmx86.REG_SP, amd64StructBaseOff)
 }
 
 // emitEpilogue emits frame teardown and return:
 // ADDQ SP, #frame; RET.
 func (as *assembler) emitEpilogue() {
-	as.emitAddImmSP(amd64FrameBytes)
+	as.emitAddImmSP(int32(as.frameBytes))
 	as.emitRet()
 }
 
@@ -281,26 +284,66 @@ func (as *assembler) emitInstr(ins Instr) error {
 	}
 }
 
-// emitCallBuiltin dispatches CALL_BUILTIN lowering by BuiltinID.
+// emitCallerSave spills caller-saved registers that are live across the current call.
+func (as *assembler) emitCallerSave() {
+	entries := as.callerSaves[as.current]
+	for _, e := range entries {
+		off := int32(amd64BaseFrameBytes + e.Slot*8)
+		if e.IsFloat {
+			as.emitStoreMemFloat(uint32(e.Reg-100), asmx86.REG_SP, off)
+		} else {
+			as.emitStoreMemFromAsmReg(asmIntReg(uint32(e.Reg)), asmx86.REG_SP, off)
+			if e.Reg2 >= 0 {
+				as.emitStoreMemFromAsmReg(asmIntReg(uint32(e.Reg2)), asmx86.REG_SP, off+8)
+			}
+		}
+	}
+}
+
+// emitCallerRestore reloads caller-saved registers after a call.
+func (as *assembler) emitCallerRestore() {
+	entries := as.callerSaves[as.current]
+	for _, e := range entries {
+		off := int32(amd64BaseFrameBytes + e.Slot*8)
+		if e.IsFloat {
+			as.emitLoadMemFloat(uint32(e.Reg-100), asmx86.REG_SP, off)
+		} else {
+			as.emitLoadMemToAsmReg(asmIntReg(uint32(e.Reg)), asmx86.REG_SP, off)
+			if e.Reg2 >= 0 {
+				as.emitLoadMemToAsmReg(asmIntReg(uint32(e.Reg2)), asmx86.REG_SP, off+8)
+			}
+		}
+	}
+}
+
+// emitCallBuiltin dispatches CALL_BUILTIN lowering by BuiltinID,
+// with caller-saved register spill/reload around the call.
 func (as *assembler) emitCallBuiltin(ins Instr) error {
+	as.emitCallerSave()
 	fn, ok := builtinFunction(ins.BuiltinID)
 	if !ok {
 		return fmt.Errorf("%w: builtin %v has no function value", ErrCodegenUnsupported, ins.BuiltinID)
 	}
+	var err error
 	switch ins.BuiltinID {
 	case BuiltinStrSize:
-		return as.emitCallStringToInt(ins, fn)
+		err = as.emitCallStringToInt(ins, fn)
 	case BuiltinStrEq, BuiltinStrNe, BuiltinStrContains, BuiltinStrStarts, BuiltinStrEnds:
-		return as.emitCallTwoStringsToBool(ins, fn)
+		err = as.emitCallTwoStringsToBool(ins, fn)
 	case BuiltinStrConcat:
-		return as.emitCallTwoStringsToString(ins, fn)
+		err = as.emitCallTwoStringsToString(ins, fn)
 	case BuiltinListContainsStringSlice:
-		return as.emitCallSliceToBool(ins, fn)
+		err = as.emitCallSliceToBool(ins, fn)
 	case BuiltinListContainsStringArray:
-		return as.emitCallArrayToBool(ins, fn)
+		err = as.emitCallArrayToBool(ins, fn)
 	default:
 		return fmt.Errorf("%w: builtin %v is unsupported on amd64", ErrCodegenUnsupported, ins.BuiltinID)
 	}
+	if err != nil {
+		return err
+	}
+	as.emitCallerRestore()
+	return nil
 }
 
 // emitCallStringToInt emits string -> int64 helper call:
@@ -990,6 +1033,16 @@ func (as *assembler) emitLoadMemBool(rd uint32, base int16, off int32) {
 	as.registerProg(p)
 }
 
+// emitStoreMemFloat emits float64 store:
+// MOVSD [base+off], Xfs.
+func (as *assembler) emitStoreMemFloat(fs uint32, base int16, off int32) {
+	p := as.asmCtxt.NewProg()
+	p.As = asmx86.AMOVSD
+	p.From = regAddr(asmFloatReg(fs))
+	p.To = memAddr(base, off)
+	as.registerProg(p)
+}
+
 // emitLoadMemFloat emits float64 load:
 // MOVSD Xfd, [base+off].
 func (as *assembler) emitLoadMemFloat(fd uint32, base int16, off int32) {
@@ -1184,4 +1237,17 @@ func asmFloatReg(reg uint32) int16 {
 	default:
 		return asmx86.REG_X0
 	}
+}
+
+// frameBytes returns the total stack frame size for the given number of save slots.
+func frameBytes(maxSlots int) int {
+	n := amd64BaseFrameBytes + maxSlots*8
+	if n < amd64BaseFrameBytes {
+		n = amd64BaseFrameBytes
+	}
+	// 8-byte align.
+	if n%8 != 0 {
+		n += 8 - n%8
+	}
+	return n
 }

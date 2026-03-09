@@ -33,7 +33,7 @@ func TestAllocateDoubleWideRegister(t *testing.T) {
 	if !found {
 		t.Fatalf("expected allocation for vreg 1")
 	}
-	if loc.SpillSlot >= 0 {
+	if loc.Slot >= 0 {
 		t.Fatalf("expected register allocation for vreg 1, got spill: %#v", loc)
 	}
 	if loc.Reg2 < 0 {
@@ -86,7 +86,7 @@ func TestAllocateARM64UsesExpandedIntRegPool(t *testing.T) {
 	if !found {
 		t.Fatalf("expected allocation for vreg 1")
 	}
-	if loc.SpillSlot >= 0 {
+	if loc.Slot >= 0 {
 		t.Fatalf("expected register allocation for vreg 1, got spill: %#v", loc)
 	}
 	if loc.Reg < 0 || loc.Reg > 15 {

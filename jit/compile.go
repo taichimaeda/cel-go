@@ -22,9 +22,9 @@ import (
 	"sync/atomic"
 	"unsafe"
 
-	"github.com/taichimaeda/sonic/loader"
 	celast "github.com/taichimaeda/cel-go/common/ast"
 	celtypes "github.com/taichimaeda/cel-go/common/types"
+	"github.com/taichimaeda/sonic/loader"
 	"github.com/twitchyliquid64/golang-asm/asm/arch"
 	"github.com/twitchyliquid64/golang-asm/obj"
 )
@@ -39,14 +39,17 @@ type NativeEvalFunc func(input unsafe.Pointer) bool
 type nativeEvalFunc func(input unsafe.Pointer) uint64
 
 type assembler struct {
-	current    int                 // Current IR instruction index (-1 for prologue/epilogue).
-	progs      []*obj.Prog         // All assembled instructions in order, linked together.
-	progMap    map[int]*obj.Prog   // Maps IR instruction index to its first assembled instruction.
-	branchMap  map[int][]*obj.Prog // Maps target IR index to branch instructions that jump to it.
-	vregMap    map[VReg]Location
-	stringPool []string
-	asmCtxt    *obj.Link
-	asmArch    *arch.Arch
+	current     int                  // Current IR instruction index (-1 for prologue/epilogue).
+	progs       []*obj.Prog          // All assembled instructions in order, linked together.
+	progMap     map[int]*obj.Prog    // Maps IR instruction index to its first assembled instruction.
+	branchMap   map[int][]*obj.Prog  // Maps target IR index to branch instructions that jump to it.
+	stringPool  []string             // Interned string literals referenced by CONST_STRING instructions.
+	vregLocs    map[VReg]Location    // Maps virtual register to physical register/spill slot.
+	callerSaves map[int][]CallerSave // Maps CALL_BUILTIN index to registers to save.
+	frameBytes  int                  // Total stack frame size determined by caller saves.
+
+	asmCtxt *obj.Link
+	asmArch *arch.Arch
 }
 
 // Compile translates, allocates, and prepares a native evaluator.
@@ -75,16 +78,19 @@ func compileNative(
 	if err != nil {
 		return nil, err
 	}
-	vregMap := Allocate(prog)
-	if vregMap == nil {
+	vregLocs := Allocate(prog)
+	if vregLocs == nil {
 		return nil, fmt.Errorf("%w: register allocation returned nil", ErrCodegenUnsupported)
 	}
 	stringPool := append([]string(nil), prog.StringPool...)
-	bytes, err := assembleNative(prog, vregMap, stringPool)
+	_, _, calleeSet := buildRegSets()
+	callerSaves, maxSlots := computeCallerSaves(prog.Instrs, vregLocs, calleeSet)
+	frameBytes := frameBytes(maxSlots)
+	bytes, err := assembleNative(prog, stringPool, vregLocs, callerSaves, frameBytes)
 	if err != nil {
 		return nil, err
 	}
-	fn, fnVal, err := loadNative(bytes)
+	fn, fnVal, err := loadNative(bytes, frameBytes)
 	if err != nil {
 		return nil, err
 	}
@@ -98,21 +104,26 @@ func compileNative(
 
 func assembleNative(
 	prog *Program,
-	vregMap map[VReg]Location,
 	stringPool []string,
+	vregLocs map[VReg]Location,
+	callerSaves map[int][]CallerSave,
+	frameBytes int,
 ) ([]byte, error) {
 	asmCtxt, asmArch := newNativeAsmContext()
 	if asmCtxt == nil || asmArch == nil {
 		return nil, fmt.Errorf("%w: assembler context is unavailable for GOARCH=%s", ErrCodegenUnsupported, runtime.GOARCH)
 	}
 	as := &assembler{
-		branchMap:  make(map[int][]*obj.Prog, 16),
-		progs:      make([]*obj.Prog, 0, len(prog.Instrs)*6+16),
-		progMap:    make(map[int]*obj.Prog, len(prog.Instrs)),
-		vregMap:    vregMap,
-		stringPool: stringPool,
-		asmCtxt:    asmCtxt,
-		asmArch:    asmArch,
+		branchMap:   make(map[int][]*obj.Prog, 16),
+		progs:       make([]*obj.Prog, 0, len(prog.Instrs)*6+16),
+		progMap:     make(map[int]*obj.Prog, len(prog.Instrs)),
+		stringPool:  stringPool,
+		vregLocs:    vregLocs,
+		callerSaves: callerSaves,
+		frameBytes:  frameBytes,
+
+		asmArch: asmArch,
+		asmCtxt: asmCtxt,
 	}
 	as.current = -1
 	as.emitPrologue()
@@ -127,12 +138,16 @@ func assembleNative(
 	if err := as.resolveBranches(len(prog.Instrs)); err != nil {
 		return nil, err
 	}
-	return as.bytes()
+	code, err := as.bytes()
+	if err != nil {
+		return nil, err
+	}
+	return code, nil
 }
 
 var nativeLoadSequence atomic.Uint64
 
-func loadNative(bytes []byte) (nativeEvalFunc, loader.Function, error) {
+func loadNative(bytes []byte, frameBytes int) (nativeEvalFunc, loader.Function, error) {
 	seq := nativeLoadSequence.Add(1)
 	moduleName := fmt.Sprintf("cel.jit.%s.%d.", runtime.GOARCH, seq)
 	funcName := fmt.Sprintf("nativeEval%d", seq)
@@ -146,12 +161,12 @@ func loadNative(bytes []byte) (nativeEvalFunc, loader.Function, error) {
 	fnVal := ld.LoadOne(
 		bytes,
 		funcName,
-		nativeFrameBytes,
+		frameBytes,
 		8,
 		[]bool{true},
 		[]bool{},
 		loader.Pcdata{
-			{PC: uint32(len(bytes)), Val: nativeFrameBytes},
+			{PC: uint32(len(bytes)), Val: int32(frameBytes)},
 		},
 	)
 	fnRaw := unsafe.Pointer(fnVal)
@@ -244,12 +259,12 @@ func (as *assembler) locOf(v VReg) (Location, error) {
 	if v == 0 {
 		return Location{}, fmt.Errorf("%w: virtual register 0 is invalid", ErrCodegenUnsupported)
 	}
-	loc, found := as.vregMap[v]
+	loc, found := as.vregLocs[v]
 	if !found {
 		return Location{}, fmt.Errorf("%w: virtual register v%d has no assigned location", ErrCodegenUnsupported, v)
 	}
-	if loc.SpillSlot >= 0 {
-		return Location{}, fmt.Errorf("%w: virtual register v%d was spilled to slot %d", ErrCodegenUnsupported, v, loc.SpillSlot)
+	if loc.Slot >= 0 {
+		return Location{}, fmt.Errorf("%w: virtual register v%d was spilled to slot %d", ErrCodegenUnsupported, v, loc.Slot)
 	}
 	return loc, nil
 }

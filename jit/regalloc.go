@@ -31,7 +31,7 @@ type Interval struct {
 type Location struct {
 	Reg       int16
 	Reg2      int16
-	SpillSlot int
+	Slot int
 }
 
 // Allocate runs linear-scan allocation for the current runtime architecture.
@@ -186,7 +186,7 @@ func (a *allocator) tryAllocate(typ Type) (Location, bool) {
 		}
 		r := a.freeFloat[0]
 		a.freeFloat = a.freeFloat[1:]
-		return Location{Reg: r, Reg2: -1, SpillSlot: -1}, true
+		return Location{Reg: r, Reg2: -1, Slot: -1}, true
 	case T_STRING:
 		if len(a.freeInt) < 2 {
 			return Location{}, false
@@ -195,7 +195,7 @@ func (a *allocator) tryAllocate(typ Type) (Location, bool) {
 			r1, r2 := a.freeInt[i], a.freeInt[i+1]
 			if r2 == r1+1 {
 				a.freeInt = append(a.freeInt[:i], a.freeInt[i+2:]...)
-				return Location{Reg: r1, Reg2: r2, SpillSlot: -1}, true
+				return Location{Reg: r1, Reg2: r2, Slot: -1}, true
 			}
 		}
 		return Location{}, false
@@ -205,7 +205,7 @@ func (a *allocator) tryAllocate(typ Type) (Location, bool) {
 		}
 		r := a.freeInt[0]
 		a.freeInt = a.freeInt[1:]
-		return Location{Reg: r, Reg2: -1, SpillSlot: -1}, true
+		return Location{Reg: r, Reg2: -1, Slot: -1}, true
 	}
 }
 
@@ -233,7 +233,7 @@ func (a *allocator) spill(current Interval) {
 }
 
 func (a *allocator) nextSpillLocation(t Type) Location {
-	loc := Location{Reg: -1, Reg2: -1, SpillSlot: a.nextSpill}
+	loc := Location{Reg: -1, Reg2: -1, Slot: a.nextSpill}
 	a.nextSpill++
 	if t == T_STRING {
 		a.nextSpill++
@@ -246,7 +246,7 @@ func (a *allocator) dropInactiveIntervals(start int) {
 	for _, iv := range a.activeIntervals {
 		if iv.End < start {
 			loc := a.alloc[iv.VReg]
-			if loc.SpillSlot >= 0 {
+			if loc.Slot >= 0 {
 				continue
 			}
 			a.markFree(loc.Reg)
@@ -289,8 +289,8 @@ func (a *allocator) markCallee(reg int16) {
 
 func (a *allocator) validateAlloc() error {
 	for vreg, loc := range a.alloc {
-		if loc.SpillSlot >= 0 || loc.Reg < 0 {
-			return fmt.Errorf("%w: vreg v%d has invalid primary location (spill_slot=%d reg=%d)", ErrCodegenUnsupported, vreg, loc.SpillSlot, loc.Reg)
+		if loc.Slot >= 0 || loc.Reg < 0 {
+			return fmt.Errorf("%w: vreg v%d has invalid primary location (spill_slot=%d reg=%d)", ErrCodegenUnsupported, vreg, loc.Slot, loc.Reg)
 		}
 		if loc.Reg < 100 {
 			if !isAllocIntReg(loc.Reg) {

@@ -30,6 +30,8 @@ import (
 //
 //	high address
 //	+-----------------------------------------------------------+
+//	| caller-save area [SP+arm64BaseFrameBytes ...)             |
+//	+-----------------------------------------------------------+
 //	| struct base ptr  [SP+arm64StructBaseOff]                  |
 //	+-----------------------------------------------------------+
 //	| mirrored LR      [SP+arm64SaveX30FpOff]                   |
@@ -38,7 +40,7 @@ import (
 //	+-----------------------------------------------------------+
 //	| saved X25..X19   [SP+arm64SaveX25Off ... arm64SaveX19Off] |
 //	+-----------------------------------------------------------+
-//	| helper call area / spill region                           |
+//	| helper call area                                          |
 //	|                  [SP+8 ... SP+8+arm64CallAreaBytes)       |
 //	+-----------------------------------------------------------+
 //	| saved LR (X30)   [SP+arm64SaveX30Off = SP+0]              |
@@ -76,13 +78,10 @@ const (
 	// Keep a stable copy of the struct pointer in-frame since arm64 internal ABI
 	// treats R19-R25 as scratch across calls.
 	arm64StructBaseOff = arm64SaveX30FpOff + 8
-	// Keep SP 16-byte aligned.
-	arm64FrameBytes = arm64SaveX30FpOff + 16
-
+	// Base frame size without caller-save spill area (16-byte aligned).
+	arm64BaseFrameBytes = arm64SaveX30FpOff + 16
 	// Temporary area in the caller spill region used for parallel argument moves.
 	arm64ArgMoveSpillOff = 8
-
-	nativeFrameBytes = arm64FrameBytes
 )
 
 func newNativeAsmContext() (*obj.Link, *arch.Arch) {
@@ -104,37 +103,37 @@ func newNativeAsmContext() (*obj.Link, *arch.Arch) {
 func (as *assembler) emitPrologue() {
 	// Preserve LR plus callee-saved registers X19..X25.
 	// Keep low frame offsets available for outgoing arg spills.
-	as.emitSubImm12(31, 31, arm64FrameBytes)
-	as.emitStoreInt(30, 31, arm64SaveX30Off)
-	as.emitStoreInt(19, 31, arm64SaveX19Off)
-	as.emitStoreInt(20, 31, arm64SaveX20Off)
-	as.emitStoreInt(21, 31, arm64SaveX21Off)
-	as.emitStoreInt(22, 31, arm64SaveX22Off)
-	as.emitStoreInt(23, 31, arm64SaveX23Off)
-	as.emitStoreInt(24, 31, arm64SaveX24Off)
-	as.emitStoreInt(25, 31, arm64SaveX25Off)
-	as.emitStoreInt(29, 31, arm64SaveX29Off)
-	as.emitStoreInt(30, 31, arm64SaveX30FpOff)
+	as.emitSubImm12(31, 31, uint32(as.frameBytes))
+	as.emitStoreMemInt(30, 31, arm64SaveX30Off)
+	as.emitStoreMemInt(19, 31, arm64SaveX19Off)
+	as.emitStoreMemInt(20, 31, arm64SaveX20Off)
+	as.emitStoreMemInt(21, 31, arm64SaveX21Off)
+	as.emitStoreMemInt(22, 31, arm64SaveX22Off)
+	as.emitStoreMemInt(23, 31, arm64SaveX23Off)
+	as.emitStoreMemInt(24, 31, arm64SaveX24Off)
+	as.emitStoreMemInt(25, 31, arm64SaveX25Off)
+	as.emitStoreMemInt(29, 31, arm64SaveX29Off)
+	as.emitStoreMemInt(30, 31, arm64SaveX30FpOff)
 	// Keep a canonical frame record for Go unwinding:
 	// [FP+0] = previous FP, [FP+8] = LR.
 	as.emitAddImm12(29, 31, arm64SaveX29Off)
-	as.emitStoreInt(regArg, 31, arm64StructBaseOff)
+	as.emitStoreMemInt(regArg, 31, arm64StructBaseOff)
 }
 
 // emitEpilogue emits callee-saved restores and return:
 // LDR X19..X30, [SP+off]; ADD SP, SP, #frame; RET.
 func (as *assembler) emitEpilogue() {
 	// Restore callee-saved state and return.
-	as.emitLoadInt(29, 31, arm64SaveX29Off)
-	as.emitLoadInt(25, 31, arm64SaveX25Off)
-	as.emitLoadInt(24, 31, arm64SaveX24Off)
-	as.emitLoadInt(23, 31, arm64SaveX23Off)
-	as.emitLoadInt(22, 31, arm64SaveX22Off)
-	as.emitLoadInt(21, 31, arm64SaveX21Off)
-	as.emitLoadInt(20, 31, arm64SaveX20Off)
-	as.emitLoadInt(19, 31, arm64SaveX19Off)
-	as.emitLoadInt(30, 31, arm64SaveX30Off)
-	as.emitAddImm12(31, 31, arm64FrameBytes)
+	as.emitLoadMemInt(29, 31, arm64SaveX29Off)
+	as.emitLoadMemInt(25, 31, arm64SaveX25Off)
+	as.emitLoadMemInt(24, 31, arm64SaveX24Off)
+	as.emitLoadMemInt(23, 31, arm64SaveX23Off)
+	as.emitLoadMemInt(22, 31, arm64SaveX22Off)
+	as.emitLoadMemInt(21, 31, arm64SaveX21Off)
+	as.emitLoadMemInt(20, 31, arm64SaveX20Off)
+	as.emitLoadMemInt(19, 31, arm64SaveX19Off)
+	as.emitLoadMemInt(30, 31, arm64SaveX30Off)
+	as.emitAddImm12(31, 31, uint32(as.frameBytes))
 	as.emitRet()
 }
 
@@ -191,7 +190,7 @@ func (as *assembler) emitInstr(ins Instr) error {
 				return err
 			}
 			as.emitLoadStructFieldAddr(regTmpInt, offset)
-			as.emitLoadInt(rd, regTmpInt, 0)
+			as.emitLoadMemInt(rd, regTmpInt, 0)
 			return nil
 		case T_BOOL:
 			rd, err := as.intRegOf(ins.Dst)
@@ -207,7 +206,7 @@ func (as *assembler) emitInstr(ins Instr) error {
 				return err
 			}
 			as.emitLoadStructFieldAddr(regTmpInt, offset)
-			as.emitLoadInt(regTmpInt, regTmpInt, 0)
+			as.emitLoadMemInt(regTmpInt, regTmpInt, 0)
 			as.emitMoveIntToFloat(fd, regTmpInt)
 			return nil
 		case T_STRING:
@@ -378,25 +377,62 @@ func (as *assembler) emitInstr(ins Instr) error {
 	}
 }
 
+func (as *assembler) emitCallerSave() {
+	entries := as.callerSaves[as.current]
+	for _, e := range entries {
+		off := uint32(arm64BaseFrameBytes + e.Slot*8)
+		if e.IsFloat {
+			as.emitStoreMemFloat(uint32(e.Reg-100), 31, off)
+		} else {
+			as.emitStoreMemInt(uint32(e.Reg), 31, off)
+			if e.Reg2 >= 0 {
+				as.emitStoreMemInt(uint32(e.Reg2), 31, off+8)
+			}
+		}
+	}
+}
+
+func (as *assembler) emitCallerRestore() {
+	entries := as.callerSaves[as.current]
+	for _, e := range entries {
+		off := uint32(arm64BaseFrameBytes + e.Slot*8)
+		if e.IsFloat {
+			as.emitLoadMemFloat(uint32(e.Reg-100), 31, off)
+		} else {
+			as.emitLoadMemInt(uint32(e.Reg), 31, off)
+			if e.Reg2 >= 0 {
+				as.emitLoadMemInt(uint32(e.Reg2), 31, off+8)
+			}
+		}
+	}
+}
+
 func (as *assembler) emitCallBuiltin(ins Instr) error {
+	as.emitCallerSave()
 	fn, ok := builtinFunction(ins.BuiltinID)
 	if !ok {
 		return fmt.Errorf("%w: builtin %v has no function value", ErrCodegenUnsupported, ins.BuiltinID)
 	}
+	var err error
 	switch ins.BuiltinID {
 	case BuiltinStrSize:
-		return as.emitCallStringToInt(ins, fn)
+		err = as.emitCallStringToInt(ins, fn)
 	case BuiltinStrEq, BuiltinStrNe, BuiltinStrContains, BuiltinStrStarts, BuiltinStrEnds:
-		return as.emitCallTwoStringsToBool(ins, fn)
+		err = as.emitCallTwoStringsToBool(ins, fn)
 	case BuiltinStrConcat:
-		return as.emitCallTwoStringsToString(ins, fn)
+		err = as.emitCallTwoStringsToString(ins, fn)
 	case BuiltinListContainsStringSlice:
-		return as.emitCallSliceToBool(ins, fn)
+		err = as.emitCallSliceToBool(ins, fn)
 	case BuiltinListContainsStringArray:
-		return as.emitCallArrayToBool(ins, fn)
+		err = as.emitCallArrayToBool(ins, fn)
 	default:
 		return fmt.Errorf("%w: builtin %v is unsupported on arm64", ErrCodegenUnsupported, ins.BuiltinID)
 	}
+	if err != nil {
+		return err
+	}
+	as.emitCallerRestore()
+	return nil
 }
 
 // emitCallStringToInt emits string -> int64 helper call:
@@ -568,7 +604,7 @@ func (as *assembler) emitParallelIntMoves(moves [][2]uint32) {
 			continue
 		}
 		off := uint32(arm64ArgMoveSpillOff + count*8)
-		as.emitStoreInt(m[1], 31, off)
+		as.emitStoreMemInt(m[1], 31, off)
 		count++
 	}
 	if count == 0 {
@@ -580,7 +616,7 @@ func (as *assembler) emitParallelIntMoves(moves [][2]uint32) {
 			continue
 		}
 		off := uint32(arm64ArgMoveSpillOff + count*8)
-		as.emitLoadInt(m[0], 31, off)
+		as.emitLoadMemInt(m[0], 31, off)
 		count++
 	}
 }
@@ -593,7 +629,7 @@ func (as *assembler) emitCallFunction(fn uintptr) error {
 	}
 	as.emitLoadImm(regTmpInt, uint64(fn))
 	as.emitMoveIntToInt(26, regTmpInt)
-	as.emitLoadInt(regTmpInt, regTmpInt, 0)
+	as.emitLoadMemInt(regTmpInt, regTmpInt, 0)
 	as.emitBlr(regTmpInt)
 	return nil
 }
@@ -882,9 +918,9 @@ func (as *assembler) emitLoadImm(rd uint32, imm uint64) {
 	as.registerProg(p)
 }
 
-// emitLoadInt emits 64-bit load:
+// emitLoadMemInt emits 64-bit load:
 // LDR Xrt, [Xrn, #byteOffset].
-func (as *assembler) emitLoadInt(rt, rn, byteOffset uint32) {
+func (as *assembler) emitLoadMemInt(rt, rn, byteOffset uint32) {
 	p := as.asmCtxt.NewProg()
 	p.As = asmarm64.AMOVD
 	p.From = obj.Addr{
@@ -896,12 +932,40 @@ func (as *assembler) emitLoadInt(rt, rn, byteOffset uint32) {
 	as.registerProg(p)
 }
 
-// emitStoreInt emits 64-bit store:
+// emitStoreMemInt emits 64-bit store:
 // STR Xrt, [Xrn, #byteOffset].
-func (as *assembler) emitStoreInt(rt, rn, byteOffset uint32) {
+func (as *assembler) emitStoreMemInt(rt, rn, byteOffset uint32) {
 	p := as.asmCtxt.NewProg()
 	p.As = asmarm64.AMOVD
 	p.From = regAddr(asmIntReg(rt))
+	p.To = obj.Addr{
+		Type:   obj.TYPE_MEM,
+		Reg:    asmIntReg(rn),
+		Offset: int64(byteOffset),
+	}
+	as.registerProg(p)
+}
+
+// emitLoadMemFloat emits float64 load:
+// FMOVD Dft, [Xrn, #byteOffset].
+func (as *assembler) emitLoadMemFloat(ft, rn, byteOffset uint32) {
+	p := as.asmCtxt.NewProg()
+	p.As = asmarm64.AFMOVD
+	p.From = obj.Addr{
+		Type:   obj.TYPE_MEM,
+		Reg:    asmIntReg(rn),
+		Offset: int64(byteOffset),
+	}
+	p.To = regAddr(asmFloatReg(ft))
+	as.registerProg(p)
+}
+
+// emitStoreMemFloat emits float64 store:
+// FMOVD [Xrn, #byteOffset], Dfs.
+func (as *assembler) emitStoreMemFloat(fs, rn, byteOffset uint32) {
+	p := as.asmCtxt.NewProg()
+	p.As = asmarm64.AFMOVD
+	p.From = regAddr(asmFloatReg(fs))
 	p.To = obj.Addr{
 		Type:   obj.TYPE_MEM,
 		Reg:    asmIntReg(rn),
@@ -978,7 +1042,7 @@ func (as *assembler) emitRet() {
 // emitLoadStructBase loads struct pointer shadow from frame:
 // LDR Xrd, [SP, #arm64StructBaseOff].
 func (as *assembler) emitLoadStructBase(rd uint32) {
-	as.emitLoadInt(rd, 31, arm64StructBaseOff)
+	as.emitLoadMemInt(rd, 31, arm64StructBaseOff)
 }
 
 // emitLoadStructFieldAddr emits field address materialization:
@@ -1136,4 +1200,17 @@ func asmFloatReg(reg uint32) int16 {
 	default:
 		return asmarm64.REG_F0
 	}
+}
+
+// frameBytes returns the total stack frame size for the given number of save slots.
+func frameBytes(maxSlots int) int {
+	n := arm64BaseFrameBytes + maxSlots*8
+	if n < arm64BaseFrameBytes {
+		n = arm64BaseFrameBytes
+	}
+	// 16-byte align.
+	if n%16 != 0 {
+		n += 16 - n%16
+	}
+	return n
 }
