@@ -30,7 +30,9 @@ import (
 //
 //	high address
 //	+-----------------------------------------------------------+
-//	| caller-save area [SP+arm64BaseFrameBytes ...)             |
+//	| caller-save area [SP+callerSaveOff ...)                   |
+//	+-----------------------------------------------------------+
+//	| regalloc spill area [SP+spillOffset ...)          |
 //	+-----------------------------------------------------------+
 //	| struct base ptr  [SP+arm64StructBaseOff]                  |
 //	+-----------------------------------------------------------+
@@ -78,8 +80,8 @@ const (
 	// Keep a stable copy of the struct pointer in-frame since arm64 internal ABI
 	// treats R19-R25 as scratch across calls.
 	arm64StructBaseOff = arm64SaveX30FpOff + 8
-	// Base frame size without caller-save spill area (16-byte aligned).
-	arm64BaseFrameBytes = arm64SaveX30FpOff + 16
+	// Byte offset where the regalloc spill area begins (16-byte aligned).
+	spillOffset = arm64SaveX30FpOff + 16
 	// Temporary area in the caller spill region used for parallel argument moves.
 	arm64ArgMoveSpillOff = 8
 )
@@ -103,7 +105,7 @@ func newNativeAsmContext() (*obj.Link, *arch.Arch) {
 func (as *assembler) emitPrologue() {
 	// Preserve LR plus callee-saved registers X19..X25.
 	// Keep low frame offsets available for outgoing arg spills.
-	as.emitSubImm12(31, 31, uint32(as.frameBytes))
+	as.emitSubImm12(31, 31, uint32(as.frameSize))
 	as.emitStoreMemInt(30, 31, arm64SaveX30Off)
 	as.emitStoreMemInt(19, 31, arm64SaveX19Off)
 	as.emitStoreMemInt(20, 31, arm64SaveX20Off)
@@ -133,7 +135,7 @@ func (as *assembler) emitEpilogue() {
 	as.emitLoadMemInt(20, 31, arm64SaveX20Off)
 	as.emitLoadMemInt(19, 31, arm64SaveX19Off)
 	as.emitLoadMemInt(30, 31, arm64SaveX30Off)
-	as.emitAddImm12(31, 31, uint32(as.frameBytes))
+	as.emitAddImm12(31, 31, uint32(as.frameSize))
 	as.emitRet()
 }
 
@@ -372,15 +374,73 @@ func (as *assembler) emitInstr(ins Instr) error {
 		return nil
 	case CALL_BUILTIN:
 		return as.emitCallBuiltin(ins)
+	case SPILL_LOAD:
+		return as.emitSpillLoad(ins)
+	case SPILL_STORE:
+		return as.emitSpillStore(ins)
 	default:
 		return fmt.Errorf("%w: opcode %v is unsupported on arm64", ErrCodegenUnsupported, ins.Op)
 	}
 }
 
+// emitSpillLoad loads a value from the spill slot at byte offset ins.Imm into ins.Dst.
+func (as *assembler) emitSpillLoad(ins Instr) error {
+	off := uint32(ins.Imm)
+	switch ins.Type {
+	case T_FLOAT64:
+		fd, err := as.floatRegOf(ins.Dst)
+		if err != nil {
+			return err
+		}
+		as.emitLoadMemFloat(fd, 31, off)
+	case T_STRING:
+		rPtr, rLen, err := as.stringRegsOf(ins.Dst)
+		if err != nil {
+			return err
+		}
+		as.emitLoadMemInt(rPtr, 31, off)
+		as.emitLoadMemInt(rLen, 31, off+8)
+	default:
+		rd, err := as.intRegOf(ins.Dst)
+		if err != nil {
+			return err
+		}
+		as.emitLoadMemInt(rd, 31, off)
+	}
+	return nil
+}
+
+// emitSpillStore stores a value from ins.Src1 into the spill slot at byte offset ins.Imm.
+func (as *assembler) emitSpillStore(ins Instr) error {
+	off := uint32(ins.Imm)
+	switch ins.Type {
+	case T_FLOAT64:
+		fs, err := as.floatRegOf(ins.Src1)
+		if err != nil {
+			return err
+		}
+		as.emitStoreMemFloat(fs, 31, off)
+	case T_STRING:
+		rPtr, rLen, err := as.stringRegsOf(ins.Src1)
+		if err != nil {
+			return err
+		}
+		as.emitStoreMemInt(rPtr, 31, off)
+		as.emitStoreMemInt(rLen, 31, off+8)
+	default:
+		rs, err := as.intRegOf(ins.Src1)
+		if err != nil {
+			return err
+		}
+		as.emitStoreMemInt(rs, 31, off)
+	}
+	return nil
+}
+
 func (as *assembler) emitCallerSave() {
 	entries := as.callerSaves[as.current]
 	for _, e := range entries {
-		off := uint32(arm64BaseFrameBytes + e.Slot*8)
+		off := uint32(as.callerSaveOff + e.Slot*8)
 		if e.IsFloat {
 			as.emitStoreMemFloat(uint32(e.Reg-100), 31, off)
 		} else {
@@ -395,7 +455,7 @@ func (as *assembler) emitCallerSave() {
 func (as *assembler) emitCallerRestore() {
 	entries := as.callerSaves[as.current]
 	for _, e := range entries {
-		off := uint32(arm64BaseFrameBytes + e.Slot*8)
+		off := uint32(as.callerSaveOff + e.Slot*8)
 		if e.IsFloat {
 			as.emitLoadMemFloat(uint32(e.Reg-100), 31, off)
 		} else {
@@ -1060,6 +1120,18 @@ func (as *assembler) emitLoadStructFieldAddr(rd uint32, offset uint64) {
 	as.emitAddReg(rd, rd, regTmpInt)
 }
 
+func frameBytes(numSpillSlots, numSaveSlots int) int {
+	n := spillOffset + numSpillSlots*8 + numSaveSlots*8
+	if n < spillOffset {
+		n = spillOffset
+	}
+	// 16-byte align.
+	if n%16 != 0 {
+		n += 16 - n%16
+	}
+	return n
+}
+
 func asmIntReg(reg uint32) int16 {
 	switch reg {
 	case 0:
@@ -1200,17 +1272,4 @@ func asmFloatReg(reg uint32) int16 {
 	default:
 		return asmarm64.REG_F0
 	}
-}
-
-// frameBytes returns the total stack frame size for the given number of save slots.
-func frameBytes(maxSlots int) int {
-	n := arm64BaseFrameBytes + maxSlots*8
-	if n < arm64BaseFrameBytes {
-		n = arm64BaseFrameBytes
-	}
-	// 16-byte align.
-	if n%16 != 0 {
-		n += 16 - n%16
-	}
-	return n
 }

@@ -29,13 +29,15 @@ type Interval struct {
 
 // Location is the final assigned location for a VReg (register or spill slot).
 type Location struct {
-	Reg       int16
-	Reg2      int16
+	Reg  int16
+	Reg2 int16
 	Slot int
+	Type Type
 }
 
 // Allocate runs linear-scan allocation for the current runtime architecture.
-func Allocate(p *Program) map[VReg]Location {
+// Returns the location map and the number of spill slots used.
+func Allocate(p *Program) (map[VReg]Location, int) {
 	return newAllocator(p).allocate()
 }
 
@@ -155,7 +157,7 @@ func insertInterval(intervals []Interval, iv Interval) []Interval {
 	return intervals
 }
 
-func (a *allocator) allocate() map[VReg]Location {
+func (a *allocator) allocate() (map[VReg]Location, int) {
 	for _, current := range a.allIntervals {
 		a.dropInactiveIntervals(current.Start)
 		a.sortActiveIntervals()
@@ -169,13 +171,10 @@ func (a *allocator) allocate() map[VReg]Location {
 		a.markCallee(loc.Reg)
 		a.markCallee(loc.Reg2)
 	}
-	if a.nextSpill != 0 {
-		return nil
-	}
 	if err := a.validateAlloc(); err != nil {
-		return nil
+		return nil, 0
 	}
-	return a.alloc
+	return a.alloc, a.nextSpill
 }
 
 func (a *allocator) tryAllocate(typ Type) (Location, bool) {
@@ -186,7 +185,7 @@ func (a *allocator) tryAllocate(typ Type) (Location, bool) {
 		}
 		r := a.freeFloat[0]
 		a.freeFloat = a.freeFloat[1:]
-		return Location{Reg: r, Reg2: -1, Slot: -1}, true
+		return Location{Reg: r, Reg2: -1, Slot: -1, Type: typ}, true
 	case T_STRING:
 		if len(a.freeInt) < 2 {
 			return Location{}, false
@@ -195,7 +194,7 @@ func (a *allocator) tryAllocate(typ Type) (Location, bool) {
 			r1, r2 := a.freeInt[i], a.freeInt[i+1]
 			if r2 == r1+1 {
 				a.freeInt = append(a.freeInt[:i], a.freeInt[i+2:]...)
-				return Location{Reg: r1, Reg2: r2, Slot: -1}, true
+				return Location{Reg: r1, Reg2: r2, Slot: -1, Type: typ}, true
 			}
 		}
 		return Location{}, false
@@ -205,7 +204,7 @@ func (a *allocator) tryAllocate(typ Type) (Location, bool) {
 		}
 		r := a.freeInt[0]
 		a.freeInt = a.freeInt[1:]
-		return Location{Reg: r, Reg2: -1, Slot: -1}, true
+		return Location{Reg: r, Reg2: -1, Slot: -1, Type: typ}, true
 	}
 }
 
@@ -233,7 +232,7 @@ func (a *allocator) spill(current Interval) {
 }
 
 func (a *allocator) nextSpillLocation(t Type) Location {
-	loc := Location{Reg: -1, Reg2: -1, Slot: a.nextSpill}
+	loc := Location{Reg: -1, Reg2: -1, Slot: a.nextSpill, Type: t}
 	a.nextSpill++
 	if t == T_STRING {
 		a.nextSpill++
@@ -289,7 +288,10 @@ func (a *allocator) markCallee(reg int16) {
 
 func (a *allocator) validateAlloc() error {
 	for vreg, loc := range a.alloc {
-		if loc.Slot >= 0 || loc.Reg < 0 {
+		if loc.Slot >= 0 {
+			continue
+		}
+		if loc.Reg < 0 {
 			return fmt.Errorf("%w: vreg v%d has invalid primary location (spill_slot=%d reg=%d)", ErrCodegenUnsupported, vreg, loc.Slot, loc.Reg)
 		}
 		if loc.Reg < 100 {

@@ -28,7 +28,7 @@ func TestAllocateDoubleWideRegister(t *testing.T) {
 			{Op: jit.RETURN, Src1: 1, Type: jit.T_STRING},
 		},
 	}
-	res := jit.Allocate(p)
+	res, _ := jit.Allocate(p)
 	loc, found := res[1]
 	if !found {
 		t.Fatalf("expected allocation for vreg 1")
@@ -65,9 +65,22 @@ func TestAllocateSpillOccurs(t *testing.T) {
 	instrs = append(instrs, jit.Instr{Op: jit.RETURN, Src1: 1, Type: jit.T_STRING})
 
 	p := &jit.Program{Instrs: instrs}
-	res := jit.Allocate(p)
-	if res != nil {
-		t.Fatalf("expected nil reg map when spills exist")
+	res, numSpills := jit.Allocate(p)
+	if res == nil {
+		t.Fatalf("expected non-nil reg map")
+	}
+	if numSpills == 0 {
+		t.Fatalf("expected spills to occur")
+	}
+	hasSpill := false
+	for _, loc := range res {
+		if loc.Slot >= 0 {
+			hasSpill = true
+			break
+		}
+	}
+	if !hasSpill {
+		t.Fatalf("expected at least one spilled vreg in allocation")
 	}
 }
 
@@ -81,7 +94,7 @@ func TestAllocateARM64UsesExpandedIntRegPool(t *testing.T) {
 	if runtime.GOARCH != "arm64" {
 		t.Skip("arm64-specific register-pool expectation")
 	}
-	res := jit.Allocate(p)
+	res, _ := jit.Allocate(p)
 	loc, found := res[1]
 	if !found {
 		t.Fatalf("expected allocation for vreg 1")

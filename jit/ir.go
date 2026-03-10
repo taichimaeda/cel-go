@@ -124,6 +124,10 @@ const (
 	// Calls and returns.
 	CALL_BUILTIN
 	RETURN
+
+	// Spill reload/store (inserted by Rewrite after register allocation).
+	SPILL_LOAD  // Dst = load from spill slot at byte offset Imm.
+	SPILL_STORE // Src1 = store to spill slot at byte offset Imm.
 )
 
 // Instr is a TAC instruction.
@@ -309,6 +313,10 @@ func (op Opcode) String() string {
 		return "call_builtin"
 	case RETURN:
 		return "return"
+	case SPILL_LOAD:
+		return "spill_load"
+	case SPILL_STORE:
+		return "spill_store"
 	default:
 		return "opcode(?)"
 	}
