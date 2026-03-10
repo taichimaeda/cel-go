@@ -18,6 +18,8 @@ go_library(
         "regalloc.go",
         "regalloc_amd64.go",
         "regalloc_arm64.go",
+        "regsave.go",
+        "rewrite.go",
         "runtime.go",
         "translate.go",
     ],
@@ -48,6 +50,8 @@ go_test(
     name = "go_default_test",
     srcs = [
         "regalloc_test.go",
+        "regsave_test.go",
+        "rewrite_test.go",
         "translate_test.go",
     ],
     deps = [
